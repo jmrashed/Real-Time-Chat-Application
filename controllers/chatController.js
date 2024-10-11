@@ -12,9 +12,9 @@ const {
 
 // Validation schema for messages
 const messageSchema = Joi.object({
-  content: Joi.string().required().label("Content"),
-  sender: Joi.string().required().label("Sender"),
-  room: Joi.string().required().label("Room"),
+  content: Joi.string().required().label("content"),
+  sender: Joi.string().required().label("sender"),
+  room: Joi.string().required().label("room"),
 });
 
 // Validation schema for file uploads
@@ -27,7 +27,8 @@ const sendMessage = async (req, res) => {
   // Validate incoming request body
   const { error } = messageSchema.validate(req.body);
   if (error) {
-    return sendClientErrorResponse(res, error.details[0].message);
+    const errorMessages = error.details.map(err => err.message);
+    return sendClientErrorResponse(res, "Validation failed", errorMessages);
   }
 
   const { content, sender, room } = req.body;

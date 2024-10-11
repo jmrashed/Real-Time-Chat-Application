@@ -16,16 +16,19 @@ const sendResponse = (res, statusCode, message = null, data = null, meta = null)
 
     // Include the message if it exists
     if (message) {
+        console.log(message);
         response.message = message;
     }
 
     // Include data if it exists
     if (data) {
+        console.log(data);
         response.data = data;
     }
 
     // Include meta if it exists
     if (meta) {
+        console.log(meta);
         response.meta = meta;
     }
 
