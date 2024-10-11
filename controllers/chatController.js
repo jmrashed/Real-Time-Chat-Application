@@ -1,52 +1,102 @@
+const Joi = require("joi");
 const ChatMessage = require("../models/ChatMessage");
+const User = require("../models/User"); // Assuming you have a User model
+const ChatRoom = require("../models/ChatRoom"); // Assuming you have a ChatRoom model
+const {
+  sendSuccessResponse,
+  sendCreatedResponse,
+  sendClientErrorResponse,
+  sendNotFoundResponse,
+  sendInternalServerErrorResponse,
+} = require("../utils/responseFormatter"); // Corrected import path
+
+// Validation schema for messages
+const messageSchema = Joi.object({
+  content: Joi.string().required().label("Content"),
+  sender: Joi.string().required().label("Sender"),
+  room: Joi.string().required().label("Room"),
+});
+
+// Validation schema for file uploads
+const uploadFileSchema = Joi.object({
+  room: Joi.string().required().label("Room"),
+});
 
 // Controller for sending a message
 const sendMessage = async (req, res) => {
-  const { text, sender } = req.body;
-
-  if (!text || !sender) {
-    return res.status(400).json({ message: "Text and sender are required." });
+  // Validate incoming request body
+  const { error } = messageSchema.validate(req.body);
+  if (error) {
+    return sendClientErrorResponse(res, error.details[0].message);
   }
 
+  const { content, sender, room } = req.body;
+
   try {
-    const message = new ChatMessage({ text, sender });
+    // Validate sender existence
+    const userExists = await User.findById(sender);
+    if (!userExists) {
+      return sendNotFoundResponse(res, "Sender not found.");
+    }
+
+    // Validate room existence
+    const roomExists = await ChatRoom.findById(room);
+    if (!roomExists) {
+      return sendNotFoundResponse(res, "Room not found.");
+    }
+
+    // Create and save the message
+    const message = new ChatMessage({ content, sender, room });
     await message.save();
-    return res.status(201).json(message);
-  } catch (error) {
-    console.error("Error sending message:", error);
-    return res.status(500).json({ message: "Error sending message" });
+
+    return sendCreatedResponse(res, { message: "Message sent successfully", data: message });
+  } catch (err) {
+    console.error("Error sending message:", err);
+    return sendInternalServerErrorResponse(res, "Error sending message.");
   }
 };
 
-// Controller for retrieving messages
+// Controller for retrieving messages for a specific room
 const getMessages = async (req, res) => {
+  const { room } = req.params;
+
   try {
-    const messages = await ChatMessage.find().sort({ createdAt: -1 }); // Sorting by newest first
-    return res.status(200).json(messages);
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    return res.status(500).json({ message: "Error fetching messages" });
+    // Validate room existence
+    const roomExists = await ChatRoom.findById(room);
+    if (!roomExists) {
+      return sendNotFoundResponse(res, "Room not found.");
+    }
+
+    // Fetch messages for the room
+    const messages = await ChatMessage.find({ room }).sort({ createdAt: -1 });
+    return sendSuccessResponse(res, messages);
+  } catch (err) {
+    console.error("Error fetching messages:", err);
+    return sendInternalServerErrorResponse(res, "Error fetching messages.");
   }
 };
 
 // Controller for uploading a file
 const uploadFile = async (req, res) => {
-  const { room } = req.body;
+  // Validate incoming request body
+  const { error } = uploadFileSchema.validate(req.body);
   const file = req.file; // Assumes multer is being used to handle file uploads
 
-  if (!room || !file) {
-    return res.status(400).json({ error: "Room and file are required." });
+  if (error) {
+    return sendClientErrorResponse(res, error.details[0].message);
+  }
+
+  if (!file) {
+    return sendClientErrorResponse(res, "File is required.");
   }
 
   try {
-    // Logic to handle file upload and potentially save file data to MongoDB
-    // Example: Store file path, name, etc.
-    // This could also be more complex depending on your file storage solution (S3, etc.)
-    const filePath = file.path; // Example: getting the file path after multer stores it
-    return res.status(201).json({ success: true, message: "File uploaded!", filePath });
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    return res.status(500).json({ message: "Error uploading file" });
+    // Logic to handle file upload (e.g., saving to cloud storage)
+    const filePath = file.path; // Path to the uploaded file
+    return sendCreatedResponse(res, { success: true, message: "File uploaded successfully!", filePath });
+  } catch (err) {
+    console.error("Error uploading file:", err);
+    return sendInternalServerErrorResponse(res, "Error uploading file.");
   }
 };
 

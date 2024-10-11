@@ -1,8 +1,16 @@
-// controllers/authController.js
 const User = require("../models/User"); // Assuming you have a User model
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Joi = require("joi");
+const {
+  sendSuccessResponse,
+  sendCreatedResponse,
+  sendClientErrorResponse,
+  sendNotFoundResponse,
+  sendInternalServerErrorResponse,
+  sendUnauthorizedResponse,
+} = require("../utils/responseFormatter"); // Corrected import path
+
 // Define a validation schema using Joi
 const registerSchema = Joi.object({
   username: Joi.string().min(3).max(30).required().messages({
@@ -26,7 +34,7 @@ const registerSchema = Joi.object({
   }),
 });
 
-// Define a validation schema using Joi
+// Define a validation schema for login using Joi
 const loginSchema = Joi.object({
   email: Joi.string().email().required().messages({
     "string.base": `"Email" should be a type of 'text'`,
@@ -44,13 +52,10 @@ const loginSchema = Joi.object({
 
 // Register a new user
 const registerUser = async (req, res) => {
-  // Validate user input
   const { error } = registerSchema.validate(req.body, { abortEarly: false });
-
   if (error) {
-    // Collect all error messages
     const errorMessages = error.details.map(err => err.message);
-    return res.status(400).json({ messages: errorMessages });
+    return sendClientErrorResponse(res, "Validation failed", errorMessages);
   }
 
   const { username, email, password } = req.body;
@@ -59,80 +64,67 @@ const registerUser = async (req, res) => {
     // Check if the user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ messages: ["Email already registered."] });
-    } 
-    
-    // Create a new user
-    const newUser = new User({ username, email, password });
+      return sendClientErrorResponse(res, "Email already registered.", ["Email already registered."]);
+    }
+
+    // Hash the password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ username, email, password: hashedPassword });
     await newUser.save();
-    
-    // Respond with success
-    res.status(201).json({ message: "User registered successfully." });
+
+    return sendCreatedResponse(res, "User registered successfully.", { userId: newUser._id });
   } catch (error) {
     console.error("Error registering user:", error);
-    res.status(500).json({ messages: ["Internal server error."] });
+    return sendInternalServerErrorResponse(res, "Internal server error.");
   }
 };
 
 // Log in a user
 const loginUser = async (req, res) => {
-  // Validate user input
   const { error } = loginSchema.validate(req.body, { abortEarly: false });
-
   if (error) {
-    // Collect all error messages
     const errorMessages = error.details.map(err => err.message);
-    return res.status(400).json({ messages: errorMessages });
+    return sendClientErrorResponse(res, "Validation failed", errorMessages);
   }
 
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email }); // Find user by email
-    if (!user) return res.status(401).json({ messages: ["User not found"] });
+    const user = await User.findOne({ email });
+    if (!user) return sendUnauthorizedResponse(res, "User not found");
 
-    // Use the isValidPassword method for comparison
-    const isValidPassword = await user.isValidPassword(password); 
-    if (!isValidPassword) return res.status(401).json({ messages: ["Invalid password"] });
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) return sendUnauthorizedResponse(res, "Invalid password");
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.json({ token });
+    return sendSuccessResponse(res, "Login successful", { token });
   } catch (error) {
     console.error("Error logging in:", error);
-    res.status(500).json({ messages: ["Error logging in"] });
+    return sendInternalServerErrorResponse(res, "Error logging in");
   }
 };
-
 
 // Get current user
 const getCurrentUser = async (req, res) => {
   try {
-    // Fetch the user by ID while excluding the password field
-    const user = await User.findById(req.user.id).select('-password'); // Use '-password' to exclude the password
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) return sendNotFoundResponse(res, "User not found");
 
-    // Check if user exists
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json(user); // Return the user data without password
+    return sendSuccessResponse(res, "User retrieved successfully", user);
   } catch (error) {
-    console.error("Error retrieving user:", error); // Log the error for debugging
-    res.status(500).json({ message: "Error retrieving user" });
+    console.error("Error retrieving user:", error);
+    return sendInternalServerErrorResponse(res, "Error retrieving user");
   }
 };
 
-
+// Log out a user
 const logoutUser = (req, res) => {
-  res.status(200).json({ message: "User logged out successfully." });
+  return sendSuccessResponse(res, "User logged out successfully.");
 };
-
-
-
 
 module.exports = {
   registerUser,
   loginUser,
   getCurrentUser,
-  logoutUser, 
+  logoutUser,
 };

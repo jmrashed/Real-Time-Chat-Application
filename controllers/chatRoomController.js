@@ -1,19 +1,37 @@
-const ChatRoom = require("../models/ChatRoom"); // Assuming you have a ChatRoom model
+const ChatRoom = require("../models/ChatRoom");
 const Joi = require("joi");
+const {
+  sendResponse,
+  sendSuccessResponse,
+  sendCreatedResponse,
+  sendUpdatedResponse,
+  sendDeletedResponse,
+  sendClientErrorResponse,
+  sendNotFoundResponse,
+  sendInternalServerErrorResponse,
+  sendUnauthorizedResponse,
+} = require("../utils/responseFormatter"); // Corrected import path
 
-// Define a validation schema using Joi for creating a chat room
+// Define a validation schema for creating a chat room
 const chatRoomSchema = Joi.object({
-  name: Joi.string().min(3).max(50).required().messages({
-    "string.base": `"name" should be a type of 'text'`,
-    "string.empty": `"name" cannot be an empty field`,
-    "string.min": `"name" should have a minimum length of {#limit}`,
-    "string.max": `"name" should have a maximum length of {#limit}`,
-    "any.required": `"name" is a required field`,
-  }),
-  description: Joi.string().max(200).optional().messages({
-    "string.base": `"Description" should be a type of 'text'`,
-    "string.max": `"Description" should have a maximum length of {#limit}`,
-  }),
+  name: Joi.string()
+    .min(3)
+    .max(50)
+    .required()
+    .messages({
+      "string.base": `"name" should be a type of 'text'`,
+      "string.empty": `"name" cannot be an empty field`,
+      "string.min": `"name" should have a minimum length of {#limit}`,
+      "string.max": `"name" should have a maximum length of {#limit}`,
+      "any.required": `"name" is a required field`,
+    }),
+  description: Joi.string()
+    .max(200)
+    .optional()
+    .messages({
+      "string.base": `"Description" should be a type of 'text'`,
+      "string.max": `"Description" should have a maximum length of {#limit}`,
+    }),
 });
 
 // Create a new chat room
@@ -22,9 +40,8 @@ const createChatRoom = async (req, res) => {
   const { error } = chatRoomSchema.validate(req.body, { abortEarly: false });
 
   if (error) {
-    // Collect all error messages
     const errorMessages = error.details.map(err => err.message);
-    return res.status(400).json({ messages: errorMessages });
+    return sendClientErrorResponse(res, errorMessages);
   }
 
   const { name, description } = req.body;
@@ -34,11 +51,13 @@ const createChatRoom = async (req, res) => {
     const newChatRoom = new ChatRoom({ name, description });
     await newChatRoom.save();
 
-    // Respond with success
-    res.status(201).json({ message: "Chat room created successfully.", chatRoom: newChatRoom });
-  } catch (error) {
-    console.error("Error creating chat room:", error);
-    res.status(500).json({ messages: ["Internal server error."] });
+    return sendCreatedResponse(res, {
+      message: "Chat room created successfully.",
+      chatRoom: newChatRoom,
+    });
+  } catch (err) {
+    console.error("Error creating chat room:", err);
+    return sendInternalServerErrorResponse(res, "Internal server error.");
   }
 };
 
@@ -46,10 +65,10 @@ const createChatRoom = async (req, res) => {
 const getChatRooms = async (req, res) => {
   try {
     const chatRooms = await ChatRoom.find(); // Fetch all chat rooms
-    res.json(chatRooms); // Return the list of chat rooms
-  } catch (error) {
-    console.error("Error retrieving chat rooms:", error);
-    res.status(500).json({ messages: ["Internal server error."] });
+    return sendSuccessResponse(res, chatRooms); // Return the list of chat rooms
+  } catch (err) {
+    console.error("Error retrieving chat rooms:", err);
+    return sendInternalServerErrorResponse(res, "Internal server error.");
   }
 };
 
@@ -61,16 +80,20 @@ const getChatRoomDetails = async (req, res) => {
     const chatRoom = await ChatRoom.findById(roomId); // Find chat room by ID
 
     if (!chatRoom) {
-      return res.status(404).json({ messages: ["Chat room not found."] });
+      return sendNotFoundResponse(res, "Chat room not found.");
     }
 
-    res.json(chatRoom); // Return chat room details
-  } catch (error) {
-    console.error("Error retrieving chat room details:", error);
-    res.status(500).json({ messages: ["Internal server error."] });
+    return sendSuccessResponse(res, chatRoom); // Return chat room details
+  } catch (err) {
+    console.error("Error retrieving chat room details:", err);
+    if (err.kind === "ObjectId") {
+      return sendClientErrorResponse(res, "Invalid chat room ID format.");
+    }
+    return sendInternalServerErrorResponse(res, "Internal server error.");
   }
 };
 
+// Export the controller functions
 module.exports = {
   createChatRoom,
   getChatRooms,
