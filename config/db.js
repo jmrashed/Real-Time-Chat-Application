@@ -1,9 +1,9 @@
+// config/db.js
 const mongoose = require("mongoose");
-require("dotenv").config(); // To load environment variables from .env file
+require("dotenv").config(); // Load environment variables from .env file
 
-// Get the MongoDB URI from environment variables
-const mongoURI =
-  process.env.MONGO_URI || "mongodb://localhost:27017/realtime-chat";
+// Use the provided MongoDB URI p@ssw0rd
+const mongoURI = process.env.MONGO_URI || "mongodb+srv://rashed:p@ssw0rd@cluster0.s2v3h.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // Function to connect to MongoDB
 const connectDB = async () => {
@@ -21,4 +21,4 @@ const connectDB = async () => {
   }
 };
 
-module.exports = connectDB;
+module.exports = connectDB; // Export the connectDB function

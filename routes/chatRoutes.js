@@ -1,69 +1,103 @@
-const ChatMessage = require("../models/ChatMessage");
-const fs = require("fs");
-const path = require("path");
-
-// Send a chat message
-const sendMessage = async (req, res) => {
-  const { roomId, message } = req.body;
-  const userId = req.user.userId; // Get the user ID from the JWT payload
-  const newMessage = new ChatMessage({ roomId, message, sender: userId });
-
-  try {
-    await newMessage.save();
-    res.status(201).json(newMessage);
-  } catch (error) {
-    console.error("Error sending message:", error.message);
-    res.status(500).json({ message: "Error sending message" });
-  }
-};
-
-// Get chat history for a specific room
-const getChatHistory = async (req, res) => {
-  const { roomId } = req.params;
-
-  try {
-    const messages = await ChatMessage.find({ roomId }).populate(
-      "sender",
-      "username"
-    ); // Populate sender username
-    res.json(messages);
-  } catch (error) {
-    console.error("Error fetching chat history:", error.message);
-    res.status(500).json({ message: "Error fetching chat history" });
-  }
-};
-
-// Upload a file
-const uploadFile = async (req, res) => {
-  const { roomId } = req.body;
-  const file = req.file; // Assuming you're using multer for file uploads
-
-  if (!file) {
-    return res.status(400).json({ message: "No file uploaded" });
-  }
-
-  const filePath = path.join(__dirname, "../uploads", file.filename); // Save the file path
-  const newMessage = new ChatMessage({
-    roomId,
-    message: "File uploaded",
-    sender: req.user.userId,
-    file: {
-      filename: file.filename,
-      path: filePath,
-    },
-  });
-
-  try {
-    await newMessage.save();
-    res.status(201).json(newMessage);
-  } catch (error) {
-    console.error("Error uploading file:", error.message);
-    res.status(500).json({ message: "Error uploading file" });
-  }
-};
-
-module.exports = {
+const express = require("express");
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' }); // Define your storage
+const {
   sendMessage,
-  getChatHistory,
+  getMessages,
   uploadFile,
-};
+} = require("../controllers/chatController");
+const { authenticateJWT } = require("../middleware/authMiddleware");
+
+const router = express.Router();
+
+/**
+ * @swagger
+ * tags:
+ *   name: Chat
+ *   description: Chat related endpoints
+ */
+
+/**
+ * @swagger
+ * /api/chat/messages:
+ *   post:
+ *     tags: [Chat]
+ *     summary: Send a message
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               room:
+ *                 type: string
+ *               message:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Message sent successfully
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/messages", authenticateJWT, sendMessage);
+
+/**
+ * @swagger
+ * /api/chat/messages:
+ *   get:
+ *     tags: [Chat]
+ *     summary: Get messages from a chat room
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: room
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Messages retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Room not found
+ */
+router.get("/messages", authenticateJWT, getMessages);
+
+/**
+ * @swagger
+ * /api/chat/upload:
+ *   post:
+ *     tags: [Chat]
+ *     summary: Upload a file
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *               room:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: File uploaded successfully
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/upload", authenticateJWT, uploadFile);
+
+module.exports = router;

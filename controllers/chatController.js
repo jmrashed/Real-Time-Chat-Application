@@ -1,85 +1,57 @@
-const Message = require("../models/Message"); // Import the Message model
-const path = require("path");
-const fs = require("fs");
+const ChatMessage = require("../models/ChatMessage");
 
-// Function to send a message
+// Controller for sending a message
 const sendMessage = async (req, res) => {
+  const { text, sender } = req.body;
+
+  if (!text || !sender) {
+    return res.status(400).json({ message: "Text and sender are required." });
+  }
+
   try {
-    const { roomId, userId, content, file } = req.body;
-
-    // Create a new message object
-    const newMessage = new Message({
-      roomId,
-      userId,
-      content,
-      file: file ? file.filename : null,
-      createdAt: new Date(),
-    });
-
-    // Save the message to the database
-    const savedMessage = await newMessage.save();
-
-    // Emit the message to the specific room via Socket.IO
-    req.io.to(roomId).emit("message", savedMessage);
-
-    res.status(201).json(savedMessage);
+    const message = new ChatMessage({ text, sender });
+    await message.save();
+    return res.status(201).json(message);
   } catch (error) {
-    console.error("Error sending message:", error.message);
-    res.status(500).json({ message: "Error sending message" });
+    console.error("Error sending message:", error);
+    return res.status(500).json({ message: "Error sending message" });
   }
 };
 
-// Function to get chat history for a specific room
-const getChatHistory = async (req, res) => {
+// Controller for retrieving messages
+const getMessages = async (req, res) => {
   try {
-    const { roomId } = req.params;
-
-    // Fetch messages for the specified room
-    const messages = await Message.find({ roomId }).sort({ createdAt: 1 });
-
-    res.status(200).json(messages);
+    const messages = await ChatMessage.find().sort({ createdAt: -1 }); // Sorting by newest first
+    return res.status(200).json(messages);
   } catch (error) {
-    console.error("Error retrieving chat history:", error.message);
-    res.status(500).json({ message: "Error retrieving chat history" });
+    console.error("Error fetching messages:", error);
+    return res.status(500).json({ message: "Error fetching messages" });
   }
 };
 
-// Function to handle file upload
-const uploadFile = (req, res) => {
-  const file = req.file;
+// Controller for uploading a file
+const uploadFile = async (req, res) => {
+  const { room } = req.body;
+  const file = req.file; // Assumes multer is being used to handle file uploads
 
-  if (!file) {
-    return res.status(400).json({ message: "No file uploaded" });
+  if (!room || !file) {
+    return res.status(400).json({ error: "Room and file are required." });
   }
 
-  // Respond with the file metadata
-  res.status(200).json({ filename: file.filename });
-};
-
-// Function to download a file
-const downloadFile = (req, res) => {
-  const { filename } = req.params;
-  const filePath = path.join(__dirname, "../uploads", filename);
-
-  // Check if the file exists
-  fs.stat(filePath, (err) => {
-    if (err) {
-      return res.status(404).json({ message: "File not found" });
-    }
-
-    // Send the file to the client
-    res.download(filePath, filename, (err) => {
-      if (err) {
-        console.error("Error downloading file:", err.message);
-        res.status(500).json({ message: "Error downloading file" });
-      }
-    });
-  });
+  try {
+    // Logic to handle file upload and potentially save file data to MongoDB
+    // Example: Store file path, name, etc.
+    // This could also be more complex depending on your file storage solution (S3, etc.)
+    const filePath = file.path; // Example: getting the file path after multer stores it
+    return res.status(201).json({ success: true, message: "File uploaded!", filePath });
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    return res.status(500).json({ message: "Error uploading file" });
+  }
 };
 
 module.exports = {
   sendMessage,
-  getChatHistory,
+  getMessages,
   uploadFile,
-  downloadFile,
 };
