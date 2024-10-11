@@ -3,6 +3,7 @@ const {
   registerUser,
   loginUser,
   getCurrentUser,
+  logoutUser, // Import the logout function
 } = require("../controllers/authController");
 const { authenticateJWT } = require("../middleware/authMiddleware");
 
@@ -30,6 +31,8 @@ const router = express.Router();
  *             properties:
  *               username:
  *                 type: string
+ *               email:
+ *                 type: string
  *               password:
  *                 type: string
  *     responses:
@@ -53,7 +56,7 @@ router.post("/register", registerUser);
  *           schema:
  *             type: object
  *             properties:
- *               username:
+ *               email:
  *                 type: string
  *               password:
  *                 type: string
@@ -80,5 +83,21 @@ router.post("/login", loginUser);
  *         description: Unauthorized
  */
 router.get("/me", authenticateJWT, getCurrentUser);
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Log out a user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User logged out successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/logout", authenticateJWT, logoutUser); // Add logout route
 
 module.exports = router;

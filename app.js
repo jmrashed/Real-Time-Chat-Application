@@ -6,6 +6,7 @@ const http = require('http');
 const socketIO = require('./socket'); // Import Socket.IO setup
 const authRoutes = require('./routes/authRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const chatRoomRoutes = require('./routes/chatRoomRoutes')
 const connectDB = require('./config/db'); // Corrected import
 const { swaggerUi, swaggerDocs } = require('./swagger'); // Import Swagger
 
@@ -25,6 +26,7 @@ connectDB();
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/rooms', chatRoomRoutes);
 
 
 

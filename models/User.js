@@ -32,6 +32,7 @@ UserSchema.pre("save", async function (next) {
   next();
 });
 
+
 // Method to validate password
 UserSchema.methods.isValidPassword = async function (password) {
   return await bcrypt.compare(password, this.password); // Compare provided password with hashed password
