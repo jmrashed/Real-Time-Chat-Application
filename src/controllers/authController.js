@@ -87,9 +87,13 @@ const loginUser = async (req, res) => {
     return sendClientErrorResponse(res, "Validation failed", errorMessages);
   }
 
-  const { email, password } = req.body;
-
+  
   try {
+    const { email, password } = req.body;
+
+    //const token = await loginUser(req.body)
+
+
     const user = await User.findOne({ email });
     if (!user) return sendUnauthorizedResponse(res, "User not found");
 

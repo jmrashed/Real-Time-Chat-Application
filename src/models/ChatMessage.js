@@ -21,14 +21,8 @@ const ChatMessageSchema = new mongoose.Schema({
     default: Date.now, // Set default to current time
   },
   file: {
-    name: {
-      type: String,
-      required: false,
-    },
-    url: {
-      type: String,
-      required: false,
-    },
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'File'
   },
 });
 

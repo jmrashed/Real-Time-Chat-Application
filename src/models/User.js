@@ -33,10 +33,10 @@ UserSchema.pre("save", async function (next) {
 });
 
 
-// Method to validate password
-UserSchema.methods.isValidPassword = async function (password) {
-  return await bcrypt.compare(password, this.password); // Compare provided password with hashed password
+UserSchema.methods.comparePassword = async function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
 };
+
 
 // Create the User model
 const User = mongoose.model("User", UserSchema);

@@ -1,5 +1,6 @@
 // config/db.js
 const mongoose = require("mongoose");
+const logger = require("../utils/logger");
 require("dotenv").config(); // Load environment variables from .env file
 
 // Use the provided MongoDB URI p@ssw0rd
@@ -12,11 +13,12 @@ const connectDB = async () => {
     await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-    });
+      useCreateIndex: true,
 
-    console.log("MongoDB connected successfully");
+    });
+    logger.info('MongoDB connected successfully');
   } catch (error) {
-    console.error("MongoDB connection failed:", error.message);
+    logger.error('MongoDB connection error:', error);
     process.exit(1); // Exit process if connection fails
   }
 };
