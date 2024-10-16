@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Link from "next/link";
 
 export default function SignIn() {
   const [email, setEmail] = useState("");
@@ -46,7 +47,7 @@ export default function SignIn() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full p-2 border  border-gray-300 rounded"
+            className="w-full p-2 border border-gray-300 rounded"
           />
         </div>
         <div className="mb-4">
@@ -68,6 +69,12 @@ export default function SignIn() {
         >
           Sign In
         </button>
+        <p className="mt-4 text-center text-gray-600">
+          Don't have an account?{" "}
+          <Link href="/register" className="text-blue-600 hover:underline">
+            Register
+          </Link>
+        </p>
       </form>
     </div>
   );
