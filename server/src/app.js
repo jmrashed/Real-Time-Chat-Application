@@ -14,20 +14,28 @@ const fileRoutes = require('./routes/fileRoutes');
 const rateLimiter = require('./middleware/rateLimiter');
 const fs = require('fs');
 
-
 const app = express();
 const server = http.createServer(app);
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 app.use(cors());
+
 app.use(express.json());
-app.set('trust proxy', true);// Trust the proxy for the X-Forwarded-For header
+app.set('trust proxy', true); // Trust the proxy for the X-Forwarded-For header
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'),{
+  setHeaders: (res) => {
+    res.setHeader("Access-Control-Allow-Origin", '*');
+  },
+}));
 
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR);
 }
+
 // Connect to MongoDB
 connectDB()
   .then(() => {

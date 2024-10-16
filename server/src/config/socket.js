@@ -133,37 +133,57 @@ const initializeSocket = (server) => {
     socket.on("file upload", async (fileData, callback) => {
       try {
         const { room, file, fileName, fileType } = fileData;
-        // console.log("Received file data:", fileData);
     
-        const UPLOAD_DIR = path.join(__dirname, 'uploads');
-        const destinationPath = path.join(UPLOAD_DIR, fileName);
-        
+        // Function to normalize the filename by removing extra spaces and creating a unique name
+        const createUniqueFileName = (originalFileName) => {
+          const fileExtension = path.extname(originalFileName); // Get the file extension
+          const baseFileName = path.basename(originalFileName, fileExtension) // Get the base file name
+            .replace(/\s+/g, '-') // Replace spaces with hyphens
+            .trim(); // Remove leading and trailing spaces
+          const timestamp = Date.now(); // Get the current timestamp
+          return `${baseFileName}-${timestamp}${fileExtension}`; // Create a unique file name
+        };
+    
+        // Define the upload directory
+        const UPLOAD_DIR = path.join(__dirname, '../../uploads');
+    
+        // Ensure the upload directory exists
+        if (!fs.existsSync(UPLOAD_DIR)) {
+          fs.mkdirSync(UPLOAD_DIR, { recursive: true }); // Create the uploads directory if it doesn't exist
+        }
+    
+        // Create a unique destination file name
+        const uniqueFileName = createUniqueFileName(fileName);
+        const destinationPath = path.join(UPLOAD_DIR, uniqueFileName);
+    
         // Convert ArrayBuffer to Buffer
         const buffer = Buffer.from(file);
     
         // Save the file to disk
         await fs.promises.writeFile(destinationPath, buffer);
-        // console.log("File saved to:", destinationPath);
     
+        // Create a new file record
         const newFile = new File({
-          filename: fileName,
+          filename: uniqueFileName, // Use the unique file name
           contentType: fileType,
           size: buffer.length, // Use the size of the buffer
           uploadedBy: socket.decoded.id,
           uploadedAt: new Date(),
         });
     
+        // Save the file record to the database
         const savedFile = await newFile.save();
     
         // Create a new message for the file
         const fileMessage = {
-          content: `File: ${fileName}`,
+          content: `File: ${uniqueFileName}`, // Use the unique file name in the message
           room: room,
           sender: socket.decoded.id,
           timestamp: new Date(),
           file: savedFile._id,
         };
     
+        // Save the message record to the database
         const savedMessage = await saveMessage(fileMessage);
     
         // Emit the new message to all users in the room
@@ -171,12 +191,14 @@ const initializeSocket = (server) => {
         // Also emit the new message to the sender
         socket.emit("new message", savedMessage);
     
+        // Callback with the file ID and message
         callback({ fileId: savedFile.id, message: savedMessage });
       } catch (error) {
         logger.error("Error saving file:", error);
         callback({ error: "Error saving file" });
       }
     });
+    
 
     socket.on("disconnect", () => {
       logger.info(`Socket disconnected: ${socket.id}`);

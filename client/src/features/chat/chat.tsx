@@ -87,7 +87,7 @@ export default function Chat() {
       });
 
       socketIo.on("connect_error", (err) => {
-        if (err.message === 'AUTHENTICATION_ERROR') {
+        if (err.message === "AUTHENTICATION_ERROR") {
           signOut();
         }
         console.error("Connection failed:", err.message);
@@ -98,7 +98,7 @@ export default function Chat() {
         setError(errorMessage);
       });
 
-      socketIo.on("new message", (message: Message) => {    
+      socketIo.on("new message", (message: Message) => {
         setMessages((prevMessages) => [...prevMessages, message]);
       });
 
@@ -113,11 +113,16 @@ export default function Chat() {
   useEffect(() => {
     if (socket && activeChat) {
       socket.emit("join room", activeChat.name);
-      socket.emit("get messages", activeChat._id, 0, (fetchedMessages: Message[]) => {
-        // console.log("Fetched messages:", fetchedMessages);
-        
-        setMessages(fetchedMessages);
-      });
+      socket.emit(
+        "get messages",
+        activeChat._id,
+        0,
+        (fetchedMessages: Message[]) => {
+          // console.log("Fetched messages:", fetchedMessages);
+
+          setMessages(fetchedMessages);
+        }
+      );
     }
   }, [socket, activeChat]);
 
@@ -159,22 +164,25 @@ export default function Chat() {
     }
   };
 
+  console.log("messages",messages);
+  
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; // Get the selected file
     if (file && socket && activeChat) {
       // console.log("Uploading file:", file);
-  
+
       const reader = new FileReader();
-      
+
       // Add error handling for the FileReader
       reader.onerror = () => {
         console.error("Error reading file");
         setError("Error reading file. Please try again.");
       };
-  
+
       reader.onload = (e) => {
         const arrayBuffer = e.target?.result;
-        
+
         // Check if result is an ArrayBuffer
         if (arrayBuffer instanceof ArrayBuffer) {
           const fileData = {
@@ -184,38 +192,98 @@ export default function Chat() {
             fileType: file.type,
           };
           // console.log("Uploading file data:", fileData);
-          
-          socket.emit("file upload", fileData, (response: { error?: string; success?: boolean }) => {
-            if (response.error) {
-              setError(response.error);
-              console.error("File upload error:", response.error);
-            } else {
-              // console.log("File uploaded successfully", response);
+
+          socket.emit(
+            "file upload",
+            fileData,
+            (response: { error?: string; success?: boolean }) => {
+              if (response.error) {
+                setError(response.error);
+                console.error("File upload error:", response.error);
+              } else {
+                // console.log("File uploaded successfully", response);
+              }
             }
-          });
+          );
         } else {
           console.error("File data is not valid");
           setError("Invalid file data. Please try again.");
         }
       };
-      
+
       // Start reading the file as an ArrayBuffer
       reader.readAsArrayBuffer(file);
     } else {
       console.warn("No file selected or socket/activeChat is undefined");
     }
   };
-  
 
-  const renderMessage = (message: Message) => {    
-    
-    const isCurrentUser = message?.sender?.email === session?.user?.email;    
+
+
+  // const renderMessage = (message: Message) => {
+  //   const isCurrentUser = message?.sender?.email === session?.user?.email;
+
+  //   return (
+  //     <div
+  //       className={`flex mb-4 ${
+  //         isCurrentUser ? "justify-end" : "justify-start"
+  //       }`}
+  //     >
+  //       <div
+  //         className={`max-w-[70%] p-3 rounded-lg ${
+  //           isCurrentUser
+  //             ? "bg-primary text-primary-foreground"
+  //             : "bg-secondary text-secondary-foreground"
+  //         }`}
+  //       >
+  //         <div className="font-semibold">{message?.sender.username}</div>
+
+  //         {/* Display file or message content */}
+  //         {message.fileId ? (
+  //           <div className="flex items-center mt-1">
+  //             <File className="mr-2" />
+  //             <a
+  //               href={`/api/files/${message.fileId}`}
+  //               target="_blank"
+  //               rel="noopener noreferrer"
+  //               className="underline"
+  //             >
+  //               {message.fileName || "Attached File"}
+  //             </a>
+  //           </div>
+  //         ) : (
+  //           <div className="mt-1">{message.content}</div>
+  //         )}
+
+  //         {/* Display timestamp */}
+  //         <div className="text-xs text-right mt-1 opacity-70">
+  //           {new Date(message.timestamp).toLocaleTimeString()}
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // };
+  const renderMessage = (message: Message) => {
+    const isCurrentUser = message?.sender?.email === session?.user?.email;
+  
+    // Function to determine file extension
+    const getFileExtension = (fileName: string) => {
+      return fileName?.split('.').pop()?.toLowerCase();
+    };
+  
+    const fileExtension = getFileExtension(message?.fileUrl);
   
     return (
-      <div className={`flex mb-4 ${isCurrentUser ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`flex mb-4 ${
+          isCurrentUser ? "justify-end" : "justify-start"
+        }`}
+      >
         <div
           className={`max-w-[70%] p-3 rounded-lg ${
-            isCurrentUser ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+            isCurrentUser
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-secondary-foreground"
           }`}
         >
           <div className="font-semibold">{message?.sender.username}</div>
@@ -233,10 +301,61 @@ export default function Chat() {
                 {message.fileName || "Attached File"}
               </a>
             </div>
+          ) : message?.fileUrl ? (
+            // Check the file extension to render accordingly
+            (fileExtension === 'jpg' || 
+             fileExtension === 'jpeg' || 
+             fileExtension === 'png' || 
+             fileExtension === 'gif' || 
+             fileExtension === 'webp') ? (
+              <div className="mt-1">
+                <img
+                  src={message.fileUrl}
+                  alt={message.fileName || "Attached Image"}
+                  className="max-w-full h-auto rounded-lg" // Adjust styles as needed
+                />
+              </div>
+            ) : fileExtension === 'mp3' ? (
+              <div className="mt-1">
+                <audio controls>
+                  <source src={message.fileUrl} type="audio/mpeg" />
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+            ) : fileExtension === 'mp4' ? (
+              <div className="mt-1">
+                <video controls className="max-w-full h-auto rounded-lg">
+                  <source src={message.fileUrl} type="video/mp4" />
+                  Your browser does not support the video element.
+                </video>
+              </div>
+            ) : fileExtension === 'pdf' ? (
+              <div className="mt-1">
+                <a
+                  href={message.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  View PDF Document
+                </a>
+              </div>
+            ) : (
+              <div className="mt-1">
+                <a
+                  href={message.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  {message.fileName || "Attached File"}
+                </a>
+              </div>
+            )
           ) : (
             <div className="mt-1">{message.content}</div>
           )}
-          
+  
           {/* Display timestamp */}
           <div className="text-xs text-right mt-1 opacity-70">
             {new Date(message.timestamp).toLocaleTimeString()}
@@ -246,19 +365,45 @@ export default function Chat() {
     );
   };
   
+  
+  
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const handleSignOut = () => {
+    signOut(); // Call the signOut function from NextAuth.js
+    setIsDropdownOpen(false); // Close the dropdown after signing out
+  };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen((prev) => !prev); // Toggle dropdown visibility
+  };
 
   return (
     <div className="flex h-screen  mx-auto border rounded-lg overflow-hidden bg-background">
       {/* Sidebar */}
       <div className="w-1/4 border-r flex flex-col">
         <div className="p-3 bg-secondary flex justify-between items-center">
-          <Avatar>
-            <AvatarFallback>U</AvatarFallback>
-          </Avatar>
-          <div className="flex space-x-2">
-            <Button variant="ghost" size="icon">
+          <p>{session?.user.email}</p>
+          <div className="relative flex space-x-2">
+            <Button variant="ghost" size="icon" onClick={toggleDropdown}>
               <MoreVertical className="h-5 w-5" />
             </Button>
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-300 rounded shadow-lg z-10">
+                <ul className="py-1">
+                  <li>
+                    <button
+                      onClick={handleSignOut}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-200 w-full text-left"
+                    >
+                      Logout
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
         <div className="p-2">
@@ -304,7 +449,7 @@ export default function Chat() {
       <div className="flex-1 flex flex-col">
         {activeChat ? (
           <>
-           <div className="p-3 bg-secondary flex items-center justify-between">
+            <div className="p-3 bg-secondary flex items-center justify-between">
               <div className="flex items-center">
                 <Avatar className="h-10 w-10">
                   <AvatarFallback>{activeChat.name.charAt(0)}</AvatarFallback>
@@ -324,7 +469,11 @@ export default function Chat() {
               <div ref={messagesEndRef} />
             </ScrollArea>
             <div className="p-3 bg-background flex items-center">
-              <Button variant="ghost" size="icon" className="text-muted-foreground">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground"
+              >
                 <Smile className="h-6 w-6" />
               </Button>
               <Button
@@ -344,7 +493,7 @@ export default function Chat() {
               <Input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                onKeyPress={(e) => e.key === "Enter" && handleSend()}
                 placeholder="Type a message"
                 className="flex-1 mx-2"
               />

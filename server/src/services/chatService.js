@@ -27,16 +27,17 @@ exports.getMessages = async (room, limit = 50, skip = 0) => {
       path: 'file', // Populate the file field
       select: 'filename', // Select the filename field from the File model
     })
-    .lean().
-    then(messages => {
+    .lean()
+    .then(messages => {
+      // Use a single BASE_URL and ensure it does not contain duplicates
+      const BASE_URL = process.env.DOMAIN ? process.env.DOMAIN.replace(/\/$/, '') : 'http://localhost:3000';
+
       return messages.map(message => {
-        const BASE_URL = process.env.DOMAIN || 'http://localhost:3000';
-        const fileUrl = message.file ? path.join(BASE_URL, 'uploads', message.file.filename) : null;
+        const fileUrl = message.file ? `${BASE_URL}/uploads/${message.file.filename}` : null; // Ensure proper URL formation
         return { ...message, fileUrl };
       });
     });
 };
-
 
 
 
