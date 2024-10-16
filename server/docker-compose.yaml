@@ -1,10 +1,11 @@
 version: '3.8'
 
 services:
-  express-app:
+  chat_backend:
+    container_name: chat_backend
     build:
       context: .
-      target: production  # Use the production stage for the final build
+      target: production
     ports:
       - 3030:3030
     env_file:
@@ -17,5 +18,3 @@ services:
 networks:
   chat_server_network:
     driver: bridge
-    driver_opts:
-      com.docker.network.driver.mtu: "1420"

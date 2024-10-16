@@ -1,44 +1,25 @@
-.PHONY: dev client-dev server-dev
+.PHONY: client-up client-down server-up server-down up down
 
 # Change these paths if needed
 CLIENT_DIR = client
 SERVER_DIR = server
 
-SERVER_DOCKER_COMPOSE=./client/docker-compose.yaml
-SERVER_APP_SERVICE_NAME=./server/foodie_app
+# Targets for running the client
+client-up:
+	cd $(CLIENT_DIR) && docker-compose up --build
 
-CLIENT_DOCKER_COMPOSE=docker-compose.yaml
-CLIENT_APP_SERVICE_NAME=chat-frontend
+client-down:
+	cd $(CLIENT_DIR) && docker-compose down
 
+# Targets for running the server
+server-up:
+	cd $(SERVER_DIR) && docker-compose up --build
 
-# Targets for running the client and server
-client-dev:
-	cd $(CLIENT_DIR) && npm run dev
-
-server-dev:
-	cd $(SERVER_DIR) && npm run dev
+server-down:
+	cd $(SERVER_DIR) && docker-compose down
 
 # Combined target to run both client and server
-dev: server-dev client-dev
+up-all: client-up server-up
 
-
-
-.PHONY: server-deploy
-server-deploy:
-
-docker-compose-up:
-	docker-compose -f docker-compose.yaml up -d
-
-
-.PHONY: build-no-deps
-build-no-deps:
-	docker-compose up --no-deps --build -d $(APP_SERVICE_NAME)
-
-# Restart the app service without rebuilding
-.PHONY: restart
-restart:
-	docker-compose -f $(DOCKER_COMPOSE) restart $(APP_SERVICE_NAME)
-
-
-
-
+# Stop and remove containers for both client and server
+down-all: client-down server-down
